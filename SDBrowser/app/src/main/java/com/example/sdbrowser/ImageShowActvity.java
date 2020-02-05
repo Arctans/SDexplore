@@ -26,6 +26,7 @@ public class ImageShowActvity extends Activity {
     private Matrix matrix;
     private float currentScale = 1.0f;
     private Bitmap bitmap;
+    private float prevDist;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,26 +35,7 @@ public class ImageShowActvity extends Activity {
         filename = intent.getStringExtra("filename");
 
 
-        detector = new GestureDetector(this,new GestureDetector.SimpleOnGestureListener(){
-            @Override
-            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-                Log.d(TAG, "onFling: "+width+"heigit "+height+" velocityX "+velocityX);
-                float vx = velocityX>4000?4000f:velocityX;
-                vx = velocityX<-4000?-4000f:velocityX;
-                currentScale += currentScale*vx/4000.0f;
-                currentScale = currentScale > 0.01?currentScale:0.01f;
-                matrix.reset();
-//                matrix.setScale(10,10);
-                matrix.setScale(currentScale,currentScale,160f,200f);
-//                BitmapDrawable tmp = (BitmapDrawable)imageView.getDrawable();
-//                if(!tmp.getBitmap().isRecycled()){
-//                    tmp.getBitmap().recycle();
-//                }
-                Bitmap bitmap1 = Bitmap.createBitmap(bitmap,0,0,width,height,matrix,true);
-                imageView.setImageBitmap(bitmap1);
-                return true;
-            }
-        });
+        detector = new GestureDetector(this,new MySimpleOnGestureListener());
         matrix = new Matrix();
         imageView = findViewById(R.id.show);
         imageView.setScaleType(ImageView.ScaleType.MATRIX);
@@ -72,9 +54,60 @@ public class ImageShowActvity extends Activity {
                break;
        }
     }
+    private void zoomImage(float scale){
+        matrix.reset();
 
+        matrix.setScale(scale,scale,160f,200f);
+        Bitmap bitmap2 = Bitmap.createBitmap(bitmap,0,0,width,height,matrix,true);
+        imageView.setImageBitmap(bitmap2);
+    }
+    private float calSpace(MotionEvent event){
+        float dist;
+        float x = event.getX(0)-event.getX(1);
+        float y = event.getY(0)-event.getY(0);
+        return dist = (float) Math.sqrt(x*x+y*y);
+    }
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        return detector.onTouchEvent(event);
+        Log.d(TAG, "onTouchEvent: "+event.getPointerCount());
+        if(event.getPointerCount()==2){
+            switch (event.getActionMasked()){
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    prevDist = calSpace(event);
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    float curDist = calSpace(event);
+                    zoomImage(curDist/prevDist);
+                    prevDist=curDist;
+                    break;
+            }
+        }else{
+            detector.onTouchEvent(event);
+        }
+        return true;
     }
+
+    public class MySimpleOnGestureListener extends GestureDetector.SimpleOnGestureListener{
+
+        @Override
+        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            Log.d(TAG, "onFling: "+width+"heigit "+height+" velocityX "+velocityX);
+            float vx = velocityX>4000?4000f:velocityX;
+            vx = velocityX<-4000?-4000f:velocityX;
+            currentScale += currentScale*vx/4000.0f;
+            currentScale = currentScale > 0.01?currentScale:0.01f;
+            matrix.reset();
+//                matrix.setScale(10,10);
+            matrix.setScale(currentScale,currentScale,160f,200f);
+//                BitmapDrawable tmp = (BitmapDrawable)imageView.getDrawable();
+//                if(!tmp.getBitmap().isRecycled()){
+//                    tmp.getBitmap().recycle();
+//                }
+            Bitmap bitmap1 = Bitmap.createBitmap(bitmap,0,0,width,height,matrix,true);
+            imageView.setImageBitmap(bitmap1);
+            return true;
+        }
+
+    }
+
 }
